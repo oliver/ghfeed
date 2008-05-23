@@ -1,0 +1,19 @@
+$def with (feed_id, updated, title, entry_id, summary, url)
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Geohashing Atom feed</title>
+  <id>$feed_id</id>
+  <updated>$updated</updated>
+  <author>
+    <name>Steve Pomeroy</name>
+    <uri>http://staticfree.info/</uri>
+  </author>
+  <entry>
+    <title>$title</title>
+    <id>$entry_id</id>
+    <link href="$url" />
+    <link rel="related" href="$url"/>
+    <updated>$updated</updated>
+    <summary>$summary</summary>
+  </entry>
+</feed>
