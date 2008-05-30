@@ -3,7 +3,7 @@
 from datetime import date, datetime, timedelta
 import web, md5, urllib, struct
 import sys
-cachedir = '/home/httpd/xavier/python/cache/'
+cachedir = './cache/'
 
 urls = (
 	'/atom/([\d.-]+),([\d.-]+)', 'geohash_atom',
@@ -54,8 +54,9 @@ class geohash_atom:
 		lon_plain = int(coords[1])
 		entry_id = self.site_url + "atom/%s,%s/%s" % ( lat_plain, lon_plain, d.isoformat())
 		title = "Geohash for %s, %s on %s" % (lat_plain, lon_plain, d.isoformat())
-		url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
-		print render.geohash_atom(self.site_url, updated, title, entry_id, ",".join(map(str,coords)), url)
+		#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
+		url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
+		print render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url, "%s %s" % coords)
 
 class dji_csv:
 	def __init__(self):
@@ -86,6 +87,10 @@ class geohash:
 		self.y_dji = yahoo_dji()
 
 	def gen_geohash(self, lat, lon, d):
+		# for 30W compliance:
+		# http://wiki.xkcd.com/geohashing/30W_Time_Zone_Rule
+		if float(lon) >= -30.0:
+			d = d - timedelta(1)
 		dji = self.y_dji.get_opening(d)
 		to_hash = "%s-%s" % (d.isoformat(), dji)
 		md5_text = md5.new(to_hash).hexdigest()
