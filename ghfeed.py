@@ -30,12 +30,14 @@ urls = (
 	'/', 'geohash_instructions',
 	'', 'geohash_instructions'
 )
+app = web.application(urls, globals())
+
 render = web.template.render('templates/')
 
 class geohash_instructions:
 	def GET(self):
 		web.header("Content-type", "text/plain")
-		print """Simple RESTful Geohashing interface
+		return """Simple RESTful Geohashing interface
 CSV:
 /LAT,LON
 /LAT,LON/YYYY-MM-DD
@@ -71,7 +73,7 @@ class geohash_atom:
 		title = "Geohash for %s, %s on %s" % (lat_plain, lon_plain, d.isoformat())
 		#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
 		url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
-		print render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url, "%s %s" % coords)
+		return render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url)
 
 class dji_csv:
 	def __init__(self):
@@ -83,7 +85,7 @@ class dji_csv:
 			d = date(int(year), int(month), int(day))
 		else:
 			d = date.today()
-		print self.dji.get_opening(d)
+		return self.dji.get_opening(d)
 
 class geohash_csv:
 	def __init__(self):
@@ -95,7 +97,8 @@ class geohash_csv:
 			d = date(int(year), int(month), int(day))
 		else:
 			d = date.today()
-		print ",".join(map(str,self.gh.gen_geohash(lat, lon, d)))
+		return ",".join(map(str,self.gh.gen_geohash(lat, lon, d)))
+
 
 class geohash:
 	def __init__(self):
@@ -169,5 +172,5 @@ def runfcgi_apache(func):
 web.wsgi.runwsgi = runfcgi_apache
 
 if __name__ == "__main__":
-	web.run(urls, globals())
+	app.run()
 
