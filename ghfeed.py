@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 from datetime import date, datetime, timedelta
-import web, md5, urllib, struct
+import web, md5, urllib, struct, math
 import sys
 cachedir = './cache/'
 
@@ -65,12 +65,29 @@ class geohash_atom:
 			d = date(int(year), int(month), int(day))
 		else:
 			d = date.today()
-		coords = self.gh.gen_geohash(lat, lon, d)
+
+		lat = float(lat)
+		lon = float(lon)
+
+		# find nearest geohash location (checking all neighboring graticules)
+		minDist = None
+		minCoords = None
+		for dLat in (-1, 0, 1):
+			for dLon in (-1, 0, 1):
+				coords = self.gh.gen_geohash(lat+dLat, lon+dLon, d)
+				dist = distance_on_unit_sphere(coords[0], coords[1], lat, lon)
+				if minDist is None or dist < minDist:
+					minDist = dist
+					minCoords = coords
+
+		coords = minCoords
+		distKm = minDist
+
 		updated = "%sT14:30:00Z" % d.isoformat() # 
 		lat_plain = int(coords[0])
 		lon_plain = int(coords[1])
 		entry_id = self.site_url + "atom/%s,%s/%s" % ( lat_plain, lon_plain, d.isoformat())
-		title = "Geohash for %s, %s on %s" % (lat_plain, lon_plain, d.isoformat())
+		title = "Nearest Geohash is in %s, %s on %s; %.2f km away" % (lat_plain, lon_plain, d.isoformat(), distKm)
 		#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
 		url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
 		return render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url)
@@ -98,6 +115,42 @@ class geohash_csv:
 		else:
 			d = date.today()
 		return ",".join(map(str,self.gh.gen_geohash(lat, lon, d)))
+
+
+def distance_on_unit_sphere(lat1, long1, lat2, long2):
+	"""
+	Calculates the distance (in kilometers) between two coordinates on the earth,
+	assuming the earth is perfectly spherical.
+	Taken from http://www.johndcook.com/python_longitude_latitude.html .
+	"""
+
+	# Convert latitude and longitude to
+	# spherical coordinates in radians.
+	degrees_to_radians = math.pi/180.0
+
+	# phi = 90 - latitude
+	phi1 = (90.0 - lat1)*degrees_to_radians
+	phi2 = (90.0 - lat2)*degrees_to_radians
+
+	# theta = longitude
+	theta1 = long1*degrees_to_radians
+	theta2 = long2*degrees_to_radians
+
+	# Compute spherical distance from spherical coordinates.
+
+	# For two locations in spherical coordinates
+	# (1, theta, phi) and (1, theta, phi)
+	# cosine( arc length ) =
+	#    sin phi sin phi' cos(theta-theta') + cos phi cos phi'
+	# distance = rho * arc length
+
+	cos = (math.sin(phi1)*math.sin(phi2)*math.cos(theta1 - theta2) +
+		   math.cos(phi1)*math.cos(phi2))
+	arc = math.acos( cos )
+
+	# Multiply arc by the radius of the earth (in km) to get length.
+	EARTH_RADIUS_KM = 6373
+	return arc * EARTH_RADIUS_KM
 
 
 class geohash:
