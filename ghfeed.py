@@ -107,8 +107,9 @@ class geohash:
 	def gen_geohash(self, lat, lon, d):
 		# for 30W compliance:
 		# http://wiki.xkcd.com/geohashing/30W_Time_Zone_Rule
+		START_DATE_FOR_30W = date(2008, 5, 27) # date when 30W rule became effective
 		djiDate = d
-		if float(lon) > -30.0:
+		if float(lon) > -30.0 and djiDate >= START_DATE_FOR_30W:
 			djiDate = djiDate - timedelta(1)
 		dji = self.dji_retriever.get_opening(djiDate)
 		to_hash = "%s-%s" % (d.isoformat(), dji)
