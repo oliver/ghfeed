@@ -102,14 +102,14 @@ class geohash_csv:
 
 class geohash:
 	def __init__(self):
-		self.y_dji = yahoo_dji()
+		self.dji_retriever = crox_dji()
 
 	def gen_geohash(self, lat, lon, d):
 		# for 30W compliance:
 		# http://wiki.xkcd.com/geohashing/30W_Time_Zone_Rule
 		if float(lon) >= -30.0:
 			d = d - timedelta(1)
-		dji = self.y_dji.get_opening(d)
+		dji = self.dji_retriever.get_opening(d)
 		to_hash = "%s-%s" % (d.isoformat(), dji)
 		md5_text = md5.new(to_hash).hexdigest()
 		lat_dec = 0.0
@@ -131,40 +131,19 @@ class geohash:
 			lon -= lon_dec
 		return lat, lon
 
-class yahoo_dji:
-	cachefile = 'yahoo_dji'
-	opening = dict()
-	def __init__(self):
-		self.load_today()
-		self.load_cache()
-	def load_today(self):
-		self.opening[date.today().isoformat()] = self.dl_today_opening()
-	def dl_today_opening(self):
-		t_open = urllib.urlopen("http://download.finance.yahoo.com/d/quotes.csv?s=%5EDJI&f=o").read()
-		return t_open.strip()
+class crox_dji:
+	def __init__ (self):
+		self.opening = dict()
 	def get_opening(self, d):
 		isofmt = d.isoformat()
-		check_back = 4
-		if not self.opening.has_key(isofmt) and d == date.today() and d.weekday() < 5:
-			dji_opens = datetime.utcnow()
-			dji_opens = dji_opens.replace(hour=13,minute=31,second=0)
-			if datetime.now() >= dji_opens:
-				self.load_today()
-		# look back a few days for the most recent opening
-		while check_back and not self.opening.has_key(isofmt):
-			check_back -= 1
-			d = d - timedelta(1)
-			isofmt = d.isoformat()
+		if not self.opening.has_key(isofmt):
+			self.opening[isofmt] = self.__load_opening(d)
 		return self.opening[isofmt]
 
-	def dl_history(self):
-		return urllib.urlopen("").read()
-	def load_cache(self):
-		cached = file(cachedir + self.cachefile)
-		for line in cached.readlines():
-			cols = line.split(",")
-			if len(cols) > 1:
-				self.opening[cols[0]] = cols[1]
+	def __load_opening(self,d):
+		url = "http://geo.crox.net/djia/%d/%d/%d" % (d.year, d.month, d.day)
+		t_open = urllib.urlopen(url).read()
+		return t_open.strip()
 
 def runfcgi_apache(func):
 	web.wsgi.runfcgi(func, None)
