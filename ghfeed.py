@@ -56,8 +56,7 @@ Additionally:
 
 class geohash_atom:
 	site_url = "http://staticfree.info/geohash/"
-	def __init__(self):
-		self.gh = geohash()
+	gh = geohash()
 
 	def GET(self, lat, lon, year=None,month=None,day=None):
 		web.header("Content-type", "application/atom+xml")
@@ -93,8 +92,7 @@ class geohash_atom:
 		return render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url)
 
 class dji_csv:
-	def __init__(self):
-		self.dji = crox_dji()
+	dji = crox_dji()
 
 	def GET(self, year=None, month=None, day=None):
 		web.header("Content-type", "text/csv")
@@ -105,8 +103,7 @@ class dji_csv:
 		return self.dji.get_opening(d)
 
 class geohash_csv:
-	def __init__(self):
-		self.gh = geohash()
+	gh = geohash()
 
 	def GET(self, lat, lon, year=None, month=None, day=None):
 		web.header("Content-type", "text/csv")
