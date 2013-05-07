@@ -94,7 +94,7 @@ class geohash_atom:
 
 class dji_csv:
 	def __init__(self):
-		self.dji = yahoo_dji()
+		self.dji = crox_dji()
 
 	def GET(self, year=None, month=None, day=None):
 		web.header("Content-type", "text/csv")
