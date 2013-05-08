@@ -202,6 +202,7 @@ class geohash_csv:
 def runfcgi_apache(func):
 	web.wsgi.runfcgi(func, None)
 
+# disable this line to run the script standalone (with built-in webserver):
 web.wsgi.runwsgi = runfcgi_apache
 
 if __name__ == "__main__":
