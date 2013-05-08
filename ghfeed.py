@@ -54,65 +54,6 @@ Additionally:
 /dji/YYYY-MM-DD
 """
 
-class geohash_atom:
-	site_url = "http://staticfree.info/geohash/"
-	gh = geohash()
-
-	def GET(self, lat, lon, year=None,month=None,day=None):
-		web.header("Content-type", "application/atom+xml")
-		if day:
-			d = date(int(year), int(month), int(day))
-		else:
-			d = date.today()
-
-		lat = float(lat)
-		lon = float(lon)
-
-		# find nearest geohash location (checking all neighboring graticules)
-		minDist = None
-		minCoords = None
-		for dLat in (-1, 0, 1):
-			for dLon in (-1, 0, 1):
-				coords = self.gh.gen_geohash(lat+dLat, lon+dLon, d)
-				dist = distance_on_unit_sphere(coords[0], coords[1], lat, lon)
-				if minDist is None or dist < minDist:
-					minDist = dist
-					minCoords = coords
-
-		coords = minCoords
-		distKm = minDist
-
-		updated = "%sT14:30:00Z" % d.isoformat() # 
-		lat_plain = int(coords[0])
-		lon_plain = int(coords[1])
-		entry_id = self.site_url + "atom/%s,%s/%s" % ( lat_plain, lon_plain, d.isoformat())
-		title = "Nearest Geohash is in %s, %s on %s; %.2f km away" % (lat_plain, lon_plain, d.isoformat(), distKm)
-		#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
-		url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
-		return render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url)
-
-class dji_csv:
-	dji = crox_dji()
-
-	def GET(self, year=None, month=None, day=None):
-		web.header("Content-type", "text/csv")
-		if day:
-			d = date(int(year), int(month), int(day))
-		else:
-			d = date.today()
-		return self.dji.get_opening(d)
-
-class geohash_csv:
-	gh = geohash()
-
-	def GET(self, lat, lon, year=None, month=None, day=None):
-		web.header("Content-type", "text/csv")
-		if day:
-			d = date(int(year), int(month), int(day))
-		else:
-			d = date.today()
-		return ",".join(map(str,self.gh.gen_geohash(lat, lon, d)))
-
 
 def distance_on_unit_sphere(lat1, long1, lat2, long2):
 	"""
@@ -196,6 +137,67 @@ class crox_dji:
 		url = "http://geo.crox.net/djia/%d/%d/%d" % (d.year, d.month, d.day)
 		t_open = urllib.urlopen(url).read()
 		return t_open.strip()
+
+
+class geohash_atom:
+	site_url = "http://staticfree.info/geohash/"
+	gh = geohash()
+
+	def GET(self, lat, lon, year=None,month=None,day=None):
+		web.header("Content-type", "application/atom+xml")
+		if day:
+			d = date(int(year), int(month), int(day))
+		else:
+			d = date.today()
+
+		lat = float(lat)
+		lon = float(lon)
+
+		# find nearest geohash location (checking all neighboring graticules)
+		minDist = None
+		minCoords = None
+		for dLat in (-1, 0, 1):
+			for dLon in (-1, 0, 1):
+				coords = self.gh.gen_geohash(lat+dLat, lon+dLon, d)
+				dist = distance_on_unit_sphere(coords[0], coords[1], lat, lon)
+				if minDist is None or dist < minDist:
+					minDist = dist
+					minCoords = coords
+
+		coords = minCoords
+		distKm = minDist
+
+		updated = "%sT14:30:00Z" % d.isoformat() # 
+		lat_plain = int(coords[0])
+		lon_plain = int(coords[1])
+		entry_id = self.site_url + "atom/%s,%s/%s" % ( lat_plain, lon_plain, d.isoformat())
+		title = "Nearest Geohash is in %s, %s on %s; %.2f km away" % (lat_plain, lon_plain, d.isoformat(), distKm)
+		#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
+		url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
+		return render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url)
+
+class dji_csv:
+	dji = crox_dji()
+
+	def GET(self, year=None, month=None, day=None):
+		web.header("Content-type", "text/csv")
+		if day:
+			d = date(int(year), int(month), int(day))
+		else:
+			d = date.today()
+		return self.dji.get_opening(d)
+
+class geohash_csv:
+	gh = geohash()
+
+	def GET(self, lat, lon, year=None, month=None, day=None):
+		web.header("Content-type", "text/csv")
+		if day:
+			d = date(int(year), int(month), int(day))
+		else:
+			d = date.today()
+		return ",".join(map(str,self.gh.gen_geohash(lat, lon, d)))
+
 
 def runfcgi_apache(func):
 	web.wsgi.runfcgi(func, None)
