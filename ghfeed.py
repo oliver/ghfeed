@@ -145,13 +145,16 @@ class geohash_atom:
 
 	def GET(self, lat, lon, year=None,month=None,day=None):
 		web.header("Content-type", "application/atom+xml")
+		lat = float(lat)
+		lon = float(lon)
+
 		if day:
 			d = date(int(year), int(month), int(day))
 		else:
-			d = date.today()
-
-		lat = float(lat)
-		lon = float(lon)
+			utcTime = datetime.utcnow()
+			userHourOffset = lon * 24.0 / 360.0 # estimate timezone offset from user-specified longitude
+			userTime = utcTime + timedelta(hours=userHourOffset)
+			d = userTime.date()
 
 		# find nearest geohash location (checking all neighboring graticules)
 		minDist = None
