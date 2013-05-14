@@ -91,6 +91,9 @@ def distance_on_unit_sphere(lat1, long1, lat2, long2):
 	return arc * EARTH_RADIUS_KM
 
 
+class MissingDataException(Exception):
+	pass
+
 class geohash:
 	def __init__(self):
 		self.dji_retriever = crox_dji()
@@ -136,6 +139,11 @@ class crox_dji:
 	def __load_opening(self,d):
 		url = "http://geo.crox.net/djia/%d/%d/%d" % (d.year, d.month, d.day)
 		t_open = urllib.urlopen(url).read()
+
+		if t_open.startswith("error"):
+			# assume data is not available for selected date (temporarily or permanently)
+			raise MissingDataException(t_open)
+
 		return t_open.strip()
 
 
@@ -156,12 +164,18 @@ class geohash_atom:
 			userTime = utcTime + timedelta(hours=userHourOffset)
 			d = userTime.date()
 
+		updated = "%sT14:30:00Z" % d.isoformat()
+
 		# find nearest geohash location (checking all neighboring graticules)
 		minDist = None
 		minCoords = None
 		for dLat in (-1, 0, 1):
 			for dLon in (-1, 0, 1):
-				coords = self.gh.gen_geohash(lat+dLat, lon+dLon, d)
+				try:
+					coords = self.gh.gen_geohash(lat+dLat, lon+dLon, d)
+				except MissingDataException, e:
+					# return empty feed if DJI value is missing:
+					return render.geohash_atom(self.site_url, updated, False, "", "", "", "")
 				dist = distance_on_unit_sphere(coords[0], coords[1], lat, lon)
 				if minDist is None or dist < minDist:
 					minDist = dist
@@ -170,14 +184,13 @@ class geohash_atom:
 		coords = minCoords
 		distKm = minDist
 
-		updated = "%sT14:30:00Z" % d.isoformat() # 
 		lat_plain = int(coords[0])
 		lon_plain = int(coords[1])
 		entry_id = self.site_url + "atom/%s,%s/%s" % ( lat_plain, lon_plain, d.isoformat())
 		title = "Nearest Geohash is in %s, %s on %s; %.2f km away" % (lat_plain, lon_plain, d.isoformat(), distKm)
 		#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
 		url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
-		return render.geohash_atom(self.site_url, updated, title, entry_id, "%s,%s" % coords, url)
+		return render.geohash_atom(self.site_url, updated, True, title, entry_id, "%s,%s" % coords, url)
 
 class dji_csv:
 	dji = crox_dji()

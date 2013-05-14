@@ -1,4 +1,4 @@
-$def with (feed_id, updated, title, entry_id, summary, url)
+$def with (feed_id, updated, showEntry, title, entry_id, summary, url)
 <?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>Geohashing Atom feed</title>
@@ -8,6 +8,7 @@ $def with (feed_id, updated, title, entry_id, summary, url)
     <name>Steve Pomeroy</name>
     <uri>http://staticfree.info/</uri>
   </author>
+$if showEntry:
   <entry>
     <title>$title</title>
     <id>$entry_id</id>
