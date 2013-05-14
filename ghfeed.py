@@ -160,6 +160,9 @@ class geohash_atom:
 		lat = float(lat)
 		lon = float(lon)
 
+		if lat > 90 or lat < -90 or lon > 180 or lon < -180:
+			raise web.notfound("coordinate out of range")
+
 		if day:
 			d = date(int(year), int(month), int(day))
 		else:
