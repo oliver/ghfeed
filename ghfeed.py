@@ -143,6 +143,10 @@ class crox_dji:
 		if t_open.startswith("error"):
 			# assume data is not available for selected date (temporarily or permanently)
 			raise MissingDataException(t_open)
+		else:
+			# check that returned string is a floating-point number;
+			# raise any parsing exception up to caller
+			float(t_open.strip())
 
 		return t_open.strip()
 
