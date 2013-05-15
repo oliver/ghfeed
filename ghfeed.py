@@ -163,41 +163,55 @@ class geohash_atom:
 		if lat > 90 or lat < -90 or lon > 180 or lon < -180:
 			raise web.notfound("coordinate out of range")
 
+		dates = []
 		if day:
-			d = date(int(year), int(month), int(day))
+			# show single feed entry for user-specified date
+			dates.append( date(int(year), int(month), int(day)) )
 		else:
 			utcTime = datetime.utcnow()
 			userHourOffset = lon * 24.0 / 360.0 # estimate timezone offset from user-specified longitude
 			userTime = utcTime + timedelta(hours=userHourOffset)
-			d = userTime.date()
+			userDate = userTime.date()
 
-		updated = "%sT14:30:00Z" % d.isoformat()
+			# show feed entries for tomorrow and last seven days:
+			for dayDelta in range(-1, 7):
+				dates.append( userDate - timedelta(dayDelta) )
 
-		# find nearest geohash location (checking all neighboring graticules)
-		minDist = None
-		minCoords = None
-		for dLat in (-1, 0, 1):
-			for dLon in (-1, 0, 1):
-				try:
-					coords = self.gh.gen_geohash(lat+dLat, lon+dLon, d)
-				except MissingDataException, e:
-					# return empty feed if DJI value is missing:
-					return render.geohash_atom(self.site_url, updated, False, "", "", "", "")
-				dist = distance_on_unit_sphere(coords[0], coords[1], lat, lon)
-				if minDist is None or dist < minDist:
-					minDist = dist
-					minCoords = coords
+		entries = []
+		latestUpdate = "%sT14:30:00Z" % min(dates).isoformat()
+		for d in dates:
+			try:
+				# find nearest geohash location (checking all neighboring graticules)
+				minDist = None
+				minCoords = None
+				for dLat in (-1, 0, 1):
+					for dLon in (-1, 0, 1):
+						coords = self.gh.gen_geohash(lat+dLat, lon+dLon, d)
+						dist = distance_on_unit_sphere(coords[0], coords[1], lat, lon)
+						if minDist is None or dist < minDist:
+							minDist = dist
+							minCoords = coords
+			except MissingDataException, e:
+				# simply omit feed entries where DJI value is missing
+				continue
 
-		coords = minCoords
-		distKm = minDist
+			coords = minCoords
+			distKm = minDist
 
-		lat_plain = int(coords[0])
-		lon_plain = int(coords[1])
-		entry_id = self.site_url + "atom/%s,%s/%s" % ( lat_plain, lon_plain, d.isoformat())
-		title = "Nearest Geohash is in %s, %s on %s; %.2f km away" % (lat_plain, lon_plain, d.isoformat(), distKm)
-		#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
-		url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
-		return render.geohash_atom(self.site_url, updated, True, title, entry_id, "%s,%s" % coords, url)
+			lat_plain = int(coords[0])
+			lon_plain = int(coords[1])
+			entry_id = self.site_url + "atom/%s,%s/%s" % ( lat_plain, lon_plain, d.isoformat())
+			title = "Nearest Geohash is in %s, %s on %s; %.2f km away" % (lat_plain, lon_plain, d.isoformat(), distKm)
+			#url = "http://irc.peeron.com/xkcd/map/map.html?date=%s&amp;lat=%s&amp;long=%s&amp;zoom=9&amp;abs=-1" % ( d.isoformat(), lat_plain, lon_plain)
+			url = "http://maps.google.com/maps?&amp;q=%s,%s&amp;z=14" % ( coords[0], coords[1])
+			summary = "%s,%s" % coords
+			updated = "%sT14:30:00Z" % d.isoformat()
+			if updated > latestUpdate:
+				latestUpdate = updated
+
+			entries.append( { "entry_id": entry_id, "title": title, "url": url, "updated": updated, "summary": summary, } )
+		return render.geohash_atom(self.site_url, latestUpdate, entries)
+
 
 class dji_csv:
 	dji = crox_dji()
