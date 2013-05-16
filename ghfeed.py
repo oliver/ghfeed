@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 from datetime import date, datetime, timedelta
-import web, md5, urllib, struct, math
+import web, md5, urllib, struct, math, time
 import sys
 cachedir = './cache/'
 
@@ -128,10 +128,16 @@ class geohash:
 		return lat, lon
 
 class crox_dji:
+	ERROR_CACHE_EXPIRATION = 3600 # how long to cache error results (in seconds)
 	def __init__ (self):
-		self.opening = dict()
+		self.opening = dict() # caches all DJI results that were successfully retrieved
+		self.errorCache = dict() # caches error results, as tuple(expirationTime, errorMessage)
 	def get_opening(self, d):
 		isofmt = d.isoformat()
+		if self.errorCache.has_key(isofmt):
+			if self.errorCache[isofmt][0] >= time.time():
+				raise MissingDataException(self.errorCache[isofmt][1])
+			del self.errorCache[isofmt]
 		if not self.opening.has_key(isofmt):
 			self.opening[isofmt] = self.__load_opening(d)
 		return self.opening[isofmt]
@@ -142,6 +148,7 @@ class crox_dji:
 
 		if t_open.startswith("error"):
 			# assume data is not available for selected date (temporarily or permanently)
+			self.errorCache[d.isoformat()] = (time.time()+self.ERROR_CACHE_EXPIRATION, t_open)
 			raise MissingDataException(t_open)
 		else:
 			# check that returned string is a floating-point number;
