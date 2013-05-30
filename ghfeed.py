@@ -128,7 +128,6 @@ class geohash:
 		return lat, lon
 
 class crox_dji:
-	ERROR_CACHE_EXPIRATION = 3600 # how long to cache error results (in seconds)
 	def __init__ (self):
 		self.opening = dict() # caches all DJI results that were successfully retrieved
 		self.errorCache = dict() # caches error results, as tuple(expirationTime, errorMessage)
@@ -147,8 +146,26 @@ class crox_dji:
 		t_open = urllib.urlopen(url).read()
 
 		if t_open.startswith("error"):
-			# assume data is not available for selected date (temporarily or permanently)
-			self.errorCache[d.isoformat()] = (time.time()+self.ERROR_CACHE_EXPIRATION, t_open)
+			# Assume data is not available for selected date (temporarily or permanently); retry later:
+
+			utcNow = datetime.utcnow()
+			dataShouldBeAvailableAt = datetime(d.year, d.month, d.day, 14, 30, 00)
+
+			if dataShouldBeAvailableAt <= utcNow:
+				# The data should be available already; maybe there's some temporary error/delay on the server.
+				# Try again in 30 minutes.
+				cacheDuration = 30*60
+			else:
+				# We're requesting data for the future - unsurprisingly the server returned an error.
+				# Cache the error until next 14:30 event (which is today or tomorrow).
+				nextDjiUpdate = datetime(utcNow.year, utcNow.month, utcNow.day, 14, 30, 00)
+				if nextDjiUpdate < utcNow:
+					nextDjiUpdate += timedelta(days=1)
+				cacheDuration = (nextDjiUpdate - utcNow).total_seconds()
+				if cacheDuration < (30*60): # don't retry for at least 30 minutes
+					cacheDuration = 30*60
+
+			self.errorCache[d.isoformat()] = (time.time()+cacheDuration, t_open)
 			raise MissingDataException(t_open)
 		else:
 			# check that returned string is a floating-point number;
