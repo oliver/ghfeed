@@ -224,8 +224,8 @@ class geohash_atom:
 			userTime = utcTime + timedelta(hours=userHourOffset)
 			userDate = userTime.date()
 
-			# show feed entries for tomorrow and last seven days:
-			for dayDelta in range(-1, 7):
+			# show feed entries for next four and last seven days:
+			for dayDelta in range(-4, 7):
 				dates.append( userDate - timedelta(dayDelta) )
 
 		entries = []
