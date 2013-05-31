@@ -17,7 +17,7 @@
 #
 from datetime import date, datetime, timedelta
 import web, md5, urllib, struct, math, time
-import sys
+import sys, os
 cachedir = './cache/'
 
 urls = (
@@ -131,6 +131,7 @@ class crox_dji:
 	def __init__ (self):
 		self.opening = dict() # caches all DJI results that were successfully retrieved
 		self.errorCache = dict() # caches error results, as tuple(expirationTime, errorMessage)
+
 	def get_opening(self, d):
 		isofmt = d.isoformat()
 		if self.errorCache.has_key(isofmt):
@@ -141,6 +142,32 @@ class crox_dji:
 			self.opening[isofmt] = self.__load_opening(d)
 		return self.opening[isofmt]
 
+	def __dji_opening_time (self, d):
+		"returns the UTC time (as datetime) when DJI value for the given date should become available"
+
+		# we want to convert 09:30:00 (US/Eastern time zone) to UTC:
+		tup = datetime(d.year, d.month, d.day, 9, 30, 0).timetuple()
+
+		# hack: temporarily change timezone of this process
+		oldTz = None
+		if os.environ.has_key("TZ"):
+			oldTz = os.environ["TZ"]
+		os.environ["TZ"] = "US/Eastern"
+		time.tzset()
+
+		# interpret timeTuple as US/Eastern "local time", and convert it to UNIX seconds (which are timezone-independent)
+		seconds = time.mktime(tup)
+
+		# reset local timezone
+		if oldTz is None:
+			del(os.environ["TZ"])
+		else:
+			os.environ["TZ"] = oldTz
+		time.tzset()
+
+		return datetime.utcfromtimestamp(seconds)
+
+
 	def __load_opening(self,d):
 		url = "http://geo.crox.net/djia/%d/%d/%d" % (d.year, d.month, d.day)
 		t_open = urllib.urlopen(url).read()
@@ -149,7 +176,7 @@ class crox_dji:
 			# Assume data is not available for selected date (temporarily or permanently); retry later:
 
 			utcNow = datetime.utcnow()
-			dataShouldBeAvailableAt = datetime(d.year, d.month, d.day, 14, 30, 00)
+			dataShouldBeAvailableAt = self.__dji_opening_time(d)
 
 			if dataShouldBeAvailableAt <= utcNow:
 				# The data should be available already; maybe there's some temporary error/delay on the server.
@@ -158,7 +185,7 @@ class crox_dji:
 			else:
 				# We're requesting data for the future - unsurprisingly the server returned an error.
 				# Cache the error until next 14:30 event (which is today or tomorrow).
-				nextDjiUpdate = datetime(utcNow.year, utcNow.month, utcNow.day, 14, 30, 00)
+				nextDjiUpdate = self.__dji_opening_time(datetime.utcnow().date())
 				if nextDjiUpdate < utcNow:
 					nextDjiUpdate += timedelta(days=1)
 				cacheDuration = (nextDjiUpdate - utcNow).total_seconds()
