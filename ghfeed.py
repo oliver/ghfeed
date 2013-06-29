@@ -143,10 +143,13 @@ class crox_dji:
 		return self.opening[isofmt]
 
 	def __dji_opening_time (self, d):
-		"returns the UTC time (as datetime) when DJI value for the given date should become available"
+		"""
+		Returns the UTC time (as datetime) when DJI value for the given date should become available.
+		Usually the DJI should be available at 9:30 New York time, but we add 10 minutes to allow for some delay.
+		"""
 
-		# we want to convert 09:30:00 (US/Eastern time zone) to UTC:
-		tup = datetime(d.year, d.month, d.day, 9, 30, 0).timetuple()
+		# we want to convert 09:40:00 (US/Eastern time zone) to UTC:
+		tup = datetime(d.year, d.month, d.day, 9, 40, 0).timetuple()
 
 		# hack: temporarily change timezone of this process
 		oldTz = None
